@@ -54,7 +54,7 @@ It simulates load, tracks system metrics, and adjusts process priorities based o
 6. The user can reset or manually kill any process.  
 
 ---
-
+```
 ## 📂 File Structure
 
 adaptive-resource-monitor/
@@ -63,7 +63,7 @@ adaptive-resource-monitor/
 ├── templates/
 │   └── index.html         # Frontend dashboard
 
-
+```
 ---
 
 ## 🧪 Setup Instructions
