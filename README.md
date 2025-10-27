@@ -72,7 +72,7 @@ adaptive-resource-monitor/
    ```bash
    git clone https://github.com/your-username/adaptive-resource-monitor.git
    cd adaptive-resource-monitor
-````
+   ```
 
 2. **Install dependencies**
 
