@@ -1,4 +1,3 @@
-```markdown
 # 🧠 Adaptive Resource Allocation in Multiprogramming Systems
 
 ---
@@ -58,15 +57,12 @@ It simulates load, tracks system metrics, and adjusts process priorities based o
 
 ## 📂 File Structure
 
-```
-
 adaptive-resource-monitor/
 ├── app.py                 # Flask app entry point
 ├── monitor.py             # Backend logic for metrics and control
 ├── templates/
 │   └── index.html         # Frontend dashboard
 
-````
 
 ---
 
