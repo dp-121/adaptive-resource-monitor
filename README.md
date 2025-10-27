@@ -54,9 +54,10 @@ It simulates load, tracks system metrics, and adjusts process priorities based o
 6. The user can reset or manually kill any process.  
 
 ---
-```
+
 ## 📂 File Structure
 
+```
 adaptive-resource-monitor/
 ├── app.py                 # Flask app entry point
 ├── monitor.py             # Backend logic for metrics and control
