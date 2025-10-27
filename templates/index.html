@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Adaptive Resource Monitor</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #0f111a;
+      color: #f0f0f0;
+    }
+    header {
+      padding: 20px;
+      background-color: #1a1c2c;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      color: #00bcd4;
+      font-size: 1.5em;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+    }
+    .controls button {
+      background-color: #00bcd4;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+    }
+    .controls button:hover {
+      background-color: #0097a7;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      padding: 20px;
+    }
+    .card {
+      background-color: #1a1c2c;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px #000;
+    }
+    .card h2 {
+      margin-top: 0;
+      color: #ffffff;
+    }
+    .gauge {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: conic-gradient(#00bcd4 0%, #444 0%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: white;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #555;
+      text-align: left;
+    }
+    .badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      color: white;
+    }
+    .cpu-badge { background-color: #00bcd4; }
+    .mem-badge { background-color: #ff9800; }
+    .kill-btn {
+      background-color: #e53935;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+    .slider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    input[type=range] {
+      width: 200px;
+    }
+    canvas {
+      margin-top: 10px;
+      background-color: #fff;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Adaptive Resource Monitor</h1>
+    <div class="controls">
+      <button onclick="simulateCPU()">Simulate CPU Load</button>
+      <button onclick="simulateMemory()">Simulate Memory Load</button>
+      <button onclick="resetSimulation()">Reset</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2>CPU Usage</h2>
+      <div id="cpu-gauge" class="gauge">--%</div>
+      <canvas id="cpuChart" width="300" height="100"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Memory Usage</h2>
+      <div id="memory-gauge" class="gauge">--%</div>
+      <canvas id="memoryChart" width="300" height="100"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Reallocation Control</h2>
+      <div class="slider">
+        <label for="threshold">Threshold:</label>
+        <input type="range" min="50" max="100" value="80" id="threshold" oninput="updateThreshold(this.value)">
+        <span id="threshold-val">80%</span>
+      </div>
+      <button onclick="triggerReallocation()">Trigger Reallocation</button>
+    </div>
+
+    <div class="card">
+      <h2>Top Processes</h2>
+      <table id="process-list">
+        <thead>
+          <tr><th>PID</th><th>Name</th><th>CPU%</th><th>Memory (MB)</th><th>Action</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    let threshold = 80;
+
+    function updateThreshold(val) {
+      threshold = val;
+      document.getElementById('threshold-val').textContent = val + '%';
+    }
+
+    async function fetchMetrics() {
+      const res = await fetch('/metrics');
+      const data = await res.json();
+
+      document.getElementById('cpu-gauge').textContent = data.cpu + '%';
+      document.getElementById('cpu-gauge').style.background = `conic-gradient(#00bcd4 ${data.cpu}%, #444 ${data.cpu}%)`;
+
+      document.getElementById('memory-gauge').textContent = data.memory_percent + '%';
+      document.getElementById('memory-gauge').style.background = `conic-gradient(#ff9800 ${data.memory_percent}%, #444 ${data.memory_percent}%)`;
+
+      cpuChart.data.labels = Array.from({ length: data.cpu_history.length }, (_, i) => i + 1);
+      cpuChart.data.datasets[0].data = data.cpu_history;
+      cpuChart.update();
+
+      memoryChart.data.labels = Array.from({ length: data.memory_history.length }, (_, i) => i + 1);
+      memoryChart.data.datasets[0].data = data.memory_history;
+      memoryChart.update();
+
+      const tbody = document.querySelector('#process-list tbody');
+      tbody.innerHTML = '';
+      data.top_processes.forEach(p => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${p.pid}</td>
+          <td>${p.name}</td>
+          <td><span class="badge cpu-badge">${p.cpu}%</span></td>
+          <td><span class="badge mem-badge">${p.memory}</span></td>
+          <td><button class="kill-btn" onclick="killProcess(${p.pid})">Kill</button></td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    async function simulateCPU() {
+      await fetch('/simulate/cpu');
+    }
+
+    async function simulateMemory() {
+      await fetch('/simulate/memory');
+    }
+
+    async function resetSimulation() {
+      await fetch('/reset');
+    }
+
+    async function triggerReallocation() {
+      await fetch(`/reallocate?threshold=${threshold}`);
+    }
+
+    async function killProcess(pid) {
+      await fetch(`/kill/${pid}`);
+    }
+
+    const cpuChart = new Chart(document.getElementById('cpuChart').getContext('2d'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'CPU %', data: [], borderColor: '#00bcd4', fill: false }] },
+      options: { scales: { y: { beginAtZero: true, max: 100 } } }
+    });
+
+    const memoryChart = new Chart(document.getElementById('memoryChart').getContext('2d'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Memory %', data: [], borderColor: '#ff9800', fill: false }] },
+      options: { scales: { y: { beginAtZero: true, max: 100 } } }
+    });
+
+    setInterval(fetchMetrics, 2000);
+    fetchMetrics();
+  </script>
+</body>
+</html>
